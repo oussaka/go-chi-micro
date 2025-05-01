@@ -22,7 +22,7 @@ type Post struct {
 	OriginalLanguage string `json:"original_language"`
 }
 
-var posts = []*Post{
+var Posts = []*Post{
 	{
 		ID:               "1",
 		Title:            "7 habits of highly effective people",
@@ -30,53 +30,4 @@ var posts = []*Post{
 		PublishedDate:    "15/08/1989",
 		OriginalLanguage: "english",
 	},
-}
-
-type BlogStorage interface {
-	List() []*Post
-	Get(string) *Post
-	Update(string, Post) *Post
-	Create(Post)
-	Delete(string) *Post
-}
-
-type BlogStore struct {
-}
-
-func (b BlogStore) List() []*Post {
-	return posts
-}
-
-func (b BlogStore) Get(id string) *Post {
-	for _, post := range posts {
-		if post.ID == id {
-			return post
-		}
-	}
-	return nil
-}
-
-func (b BlogStore) Update(id string, postUpdate Post) *Post {
-	for i, post := range posts {
-		if post.ID == id {
-			posts[i] = &postUpdate
-			return post
-		}
-	}
-	return nil
-}
-
-func (b BlogStore) Create(post Post) {
-	posts = append(posts, &post)
-}
-
-func (b BlogStore) Delete(id string) *Post {
-	for i, post := range posts {
-		if post.ID == id {
-			posts = append(posts[:i], (posts)[i+1:]...)
-			return &Post{}
-		}
-	}
-
-	return nil
 }

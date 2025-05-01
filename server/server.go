@@ -1,52 +1,44 @@
-package main
+package server
 
 import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
+	"github.com/oussaka/go-chi-micro/handler"
+
 	"fmt"
-
-	//"github.com/go-chi-micro/db"
-	//"github.com/go-chi-micro/handler"
-
 	"net"
 	"net/http"
 	"os"
-	//"github.com/go-chi/render"
 )
 
-const webPort = "8080"
+const webPort = "3000"
 
 type Server struct {
 	httpServer *http.Server
 	//router     *chi.Mux
 }
 
-type Config struct{}
-
 func New() *Server {
-	//r := chi.NewRouter()
-	//r.Use(render.SetContentType(render.ContentTypeJSON))
-	//db.InitMysql()
+	r := chi.NewRouter()
+	r.Use(render.SetContentType(render.ContentTypeJSON))
 
-	//mysqlFGClient := db.NewClient(
-	//	&db.Config{
-	//		DBConnection: "",
-	//	})
+	storage := handler.NewService()
+	blogHandler := &handler.BlogHandler{Storage: storage}
+	setupRoutes(blogHandler, r)
 
-	//run := handler.NewService(mysqlFGClient)
-	//setupRoutesForUpdate(run, r)
-
-	server := newServer()
+	server := newServer(r)
 
 	return server
 }
 
-//func setupRoutesForUpdate(service handler.Service, r *chi.Mux) {
-//	// plug in sub-routers for resources: feature gate
-//	// this pattern also allows for easy integration testing. see api_test.go
-//
-//	r.Route("/api", func(r chi.Router) {
-//		r.Mount("/v1", handler.Handler(service))
-//	})
-//}
+func setupRoutes(service *handler.BlogHandler, r *chi.Mux) {
+	// plug in sub-routers for resources: feature gate
+	// this pattern also allows for easy integration testing. see api_test.go
+
+	r.Route("/api", func(r chi.Router) {
+		r.Mount("/v1", handler.Handler(service))
+	})
+}
 
 func (s *Server) ListenAndServe() error {
 	l, err := net.Listen("tcp", ":"+s.httpServer.Addr)
@@ -58,16 +50,16 @@ func (s *Server) ListenAndServe() error {
 	return s.httpServer.Serve(l)
 }
 
-func newServer() *Server {
-	//fmt.Println("****Server Started on", config.GetYamlValues().ServerConfig.Port, "****")
+func newServer(r http.Handler) *Server {
+	fmt.Println("****Server Started on", webPort, "****")
 	return &Server{
 		httpServer: &http.Server{
-			Addr: fmt.Sprintf(":%s", webPort),
-			//Handler: r,
+			Addr:    fmt.Sprintf("%s", webPort),
+			Handler: r,
 		},
 	}
-	//return &Server{
-	//	httpServer: &http.Server{Addr: config.GetYamlValues().ServerConfig.Port, Handler: app.routes()},
-	//	router:     r,
-	//}
+}
+
+func (s *Server) GetHandler() http.Handler {
+	return s.httpServer.Handler
 }
