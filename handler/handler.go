@@ -30,6 +30,8 @@ func (g *ctx) handle() http.HandlerFunc {
 
 func Handler(handler *BlogHandler) http.Handler {
 	r := chi.NewRouter()
+	r.Use(render.SetContentType(render.ContentTypeJSON))
+
 	getRecordSetPost := ctx{storage: handler.Storage, h: handler.GetPosts}
 	createBlogPost := ctx{storage: handler.Storage, h: handler.CreatePost}
 	updateBlogs := ctx{storage: handler.Storage, h: handler.UpdatePost}

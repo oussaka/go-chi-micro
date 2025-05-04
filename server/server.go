@@ -1,11 +1,10 @@
 package server
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
-	"github.com/oussaka/go-chi-micro/handler"
-
 	"fmt"
+	"github.com/go-chi/chi/v5"
+	"github.com/oussaka/go-chi-micro/db"
+	"github.com/oussaka/go-chi-micro/handler"
 	"net"
 	"net/http"
 	"os"
@@ -20,9 +19,25 @@ type Server struct {
 
 func New() *Server {
 	r := chi.NewRouter()
-	r.Use(render.SetContentType(render.ContentTypeJSON))
 
-	storage := handler.NewService()
+	db.InitPgsql()
+
+	sqlClient := db.NewClient(
+		&db.Config{
+			DBConnection: "",
+		})
+
+	//sqlConn, err := db.CreateConnection()
+	//if err != nil {
+	//	log.Panic("Can't connect to Postgres !", err)
+	//}
+
+	//dbConfig := &db.Config{
+	//	DbPool: sqlConn.DbPool,
+	//}
+	//sqlClient := db.NewClient(dbConfig)
+	storage := handler.NewService(sqlClient)
+
 	blogHandler := &handler.BlogHandler{Storage: storage}
 	setupRoutes(blogHandler, r)
 

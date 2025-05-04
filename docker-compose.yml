@@ -7,18 +7,20 @@ services:
     restart: always
     build: .
     environment:
-      DATABASE_URL: "host=pgsql user=postgres password=postgres dbname=postgres sslmode=disable"
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
     ports:
       - "8080:3000"
     depends_on:
-      - pgsql
-  pgsql:
-    container_name: pgsql
+      - go-db
+  go-db:
+    container_name: go_db
     image: postgres:12
     environment:
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_DB: postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=postgres
     ports:
       - "5432:5432"
     volumes:
