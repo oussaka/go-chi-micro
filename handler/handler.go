@@ -2,9 +2,15 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/go-chi/chi/v5"
-	"github.com/oussaka/go-chi-micro/model"
+	"errors"
+	"github.com/jinzhu/gorm"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
+	"github.com/oussaka/go-chi-micro/httphandler"
+	"github.com/oussaka/go-chi-micro/model"
+	log "github.com/sirupsen/logrus"
 )
 
 type BlogHandler struct {
@@ -29,16 +35,16 @@ func Handler(handler *BlogHandler) http.Handler {
 	updateBlogs := ctx{storage: handler.Storage, h: handler.UpdatePost}
 	deleteBlogs := ctx{storage: handler.Storage, h: handler.DeletePost}
 
-	r.Get(wrapHandlerFunc("/blog/{id}", "get Post", getRecordSetPost.handle()))
-	r.Post(wrapHandlerFunc("/blog", "create blog", createBlogPost.handle()))
-	r.Put(wrapHandlerFunc("/blog/{data}", "update blog", updateBlogs.handle()))
-	r.Delete(wrapHandlerFunc("/blog/remove/{data}", "delete blog", deleteBlogs.handle()))
+	r.Get(httphandler.WrapHandlerFunc("/blog/{id}", "get Post", getRecordSetPost.handle()))
+	r.Post(httphandler.WrapHandlerFunc("/blog", "create blog", createBlogPost.handle()))
+	r.Put(httphandler.WrapHandlerFunc("/blog/{id}", "update blog", updateBlogs.handle()))
+	r.Delete(httphandler.WrapHandlerFunc("/blog/remove/{id}", "delete blog", deleteBlogs.handle()))
 
 	return r
 }
 
-func (b BlogStore) ListPosts(service BlogStore, w http.ResponseWriter, r *http.Request) {
-	err := json.NewEncoder(w).Encode(b.List())
+func (b BlogHandler) ListPosts(service BlogStorage, w http.ResponseWriter, r *http.Request) {
+	err := json.NewEncoder(w).Encode(b.Storage.List())
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
@@ -47,60 +53,70 @@ func (b BlogStore) ListPosts(service BlogStore, w http.ResponseWriter, r *http.R
 
 func (b BlogHandler) GetPosts(service BlogStorage, w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	Post := b.Storage.Get(id)
-	if Post == nil {
-		http.Error(w, "Post not found", http.StatusNotFound)
-	}
-	err := json.NewEncoder(w).Encode(Post)
+	post, err := b.Storage.Get(id)
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		log.Errorf("Unable To Fetch stats ", httphandler.Error(err).Code, post, err)
+
+		if errors.Is(err.(error), gorm.ErrRecordNotFound) {
+			render.Render(w, r, httphandler.ErrNotFoundRequest(err, err.Error()))
+		} else {
+			render.Render(w, r, httphandler.ErrInvalidRequest(err, "Unable To Fetch Services "))
+		}
 		return
 	}
+
+	render.Status(r, http.StatusOK)
+	render.Render(w, r, httphandler.NewSuccessResponse(http.StatusOK, post))
 }
 
 func (b BlogHandler) CreatePost(service BlogStorage, w http.ResponseWriter, r *http.Request) {
-	var Post model.Post
+	var Post *model.Blogs
 	err := json.NewDecoder(r.Body).Decode(&Post)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	b.Storage.Create(Post)
-	err = json.NewEncoder(w).Encode(Post)
+
+	postData, err := b.Storage.Create(Post)
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		log.Errorf("Unable To Fetch stats ", httphandler.Error(err).Code, postData, err)
+		httphandler.ErrInvalidRequest(err, "Unable To Fetch Services ")
 		return
 	}
+
+	render.Status(r, http.StatusOK)
+	render.Render(w, r, httphandler.NewSuccessResponse(http.StatusOK, postData))
 }
 
 func (b BlogHandler) UpdatePost(service BlogStorage, w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	var Post model.Post
+	var Post model.Blogs
 	err := json.NewDecoder(r.Body).Decode(&Post)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		render.Render(w, r, httphandler.ErrInvalidRequest(err, err.Error()))
 		return
 	}
-	updatedPost := b.Storage.Update(id, Post)
-	if updatedPost == nil {
-		http.Error(w, "Post not found", http.StatusNotFound)
-	}
-	err = json.NewEncoder(w).Encode(updatedPost)
+	updatedPost, err := b.Storage.Update(id, &Post)
+
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		log.Errorf("Unable To Fetch stats ", httphandler.Error(err).Code, updatedPost, err)
+		httphandler.ErrInvalidRequest(err, "Unable To Fetch Services ")
 		return
 	}
+
+	render.Status(r, http.StatusOK)
+	render.Render(w, r, httphandler.NewSuccessResponse(http.StatusOK, updatedPost))
 }
 
 func (b BlogHandler) DeletePost(service BlogStorage, w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	Post := b.Storage.Delete(id)
-	if Post == nil {
-		http.Error(w, "Post not found", http.StatusNotFound)
+	post, err := b.Storage.Delete(id)
+	if err != nil {
+		log.Errorf("Unable To Fetch stats ", httphandler.Error(err).Code, post, err)
+		httphandler.ErrInvalidRequest(err, "Unable To Fetch Services ")
+		return
 	}
-	w.WriteHeader(http.StatusNoContent)
-}
 
-func wrapHandlerFunc(route string, name string, handler http.HandlerFunc) (string, http.HandlerFunc) {
-	return route, handler
+	render.Status(r, http.StatusOK)
+	render.Render(w, r, httphandler.NewSuccessResponse(http.StatusOK, post))
 }

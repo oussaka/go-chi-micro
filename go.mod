@@ -8,7 +8,6 @@ require (
 	github.com/go-chi/render v1.0.3
 	github.com/jinzhu/gorm v1.9.16
 	github.com/sirupsen/logrus v1.9.3
-	gorm.io/gorm v1.25.12
 )
 
 require (
@@ -17,5 +16,4 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/lib/pq v1.1.1 // indirect
 	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
 )

@@ -1,0 +1,28 @@
+version: '3.9'
+
+services:
+  go-app:
+    container_name: go_app
+    # image: golang:1.24-alpine
+    restart: always
+    build: .
+    environment:
+      DATABASE_URL: "host=pgsql user=postgres password=postgres dbname=postgres sslmode=disable"
+    ports:
+      - "8080:3000"
+    depends_on:
+      - pgsql
+  pgsql:
+    container_name: pgsql
+    image: postgres:12
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata: {}
