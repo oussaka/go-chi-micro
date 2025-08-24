@@ -6,27 +6,44 @@ on:
             - master # Change this to the branch you want to analyze
 
 jobs:
-    sonarqube:
-        name:    SonarQube Scan
+    build:
+        name: Compile and Test
         runs-on: ubuntu-latest
-
         steps:
-            -   name: Checkout code
-                uses: actions/checkout@v2
+            - name: Clone Repository
+              uses: actions/checkout@master
+            - name: Setup go
+              uses: actions/setup-go@v1
+              with:
+                  go-version: '1.13'
+            - run: make test
+            - name: Archive code coverage results
+              uses: actions/upload-artifact@v1
+              with:
+                  name: code-coverage-report
+                  path: bin
 
-            -   name: Set up Go
-                uses: actions/setup-go@v2
-                with:
-                    go-version: 1.x # Change this to your desired Go version
+    sonarCloudTrigger:
+        needs: build
+        name: SonarCloud Trigger
+        runs-on: ubuntu-latest
+        steps:
+            - name: Clone Repository
+              uses: actions/checkout@master
+            - name: Download code coverage results
+              uses: actions/download-artifact@v1
+              with:
+                  name: code-coverage-report
+                  path: bin
+            - name: Analyze with SonarCloud
+              uses: sonarsource/sonarcloud-github-action@master
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-            -   name: Build Go project
-                run:  go build
-
-            -   name: Run SonarQube Scanner
-                uses: sonarsource/sonarqube-scan-action@v1
-                env:
-                    GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information
-                    SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}   # Generate a token on SonarQube, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
-                    SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}   # add the URL of your instance to the secrets of this repo with the name SONAR_HOST_URL (Settings > Secrets > Actions > add new repository secret)
-                with:
-                    projectBaseDir: ./ # Set this to the project's base directory
+    integrationTest:
+        needs: build
+        name: Integration Test
+        runs-on: ubuntu-latest
+        steps:
+            - run: echo Should run integration tests.he project's base directory
